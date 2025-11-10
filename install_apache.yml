@@ -1,0 +1,39 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Print $PATH for debugging
+      shell: echo $PATH
+      
+    - name: Install Apache using opkg
+      shell: |  
+        export PATH=$PATH:/opt/bin:/opt/sbin
+        opkg install apache
+      args:
+        creates: /opt/bin/httpd
+      notify:
+        - set apache to listen on port 8080
+        - start apache
+    - name: Set apache to listen on port 8080
+      lineinfile:
+        path: /opt/etc/apache2/apache2.conf
+        regexp: '^Listen 80'
+        line: 'Listen 8080'
+    - name: Set the ServerName directive to avoid FQDN warnings
+      lineinfile:
+        path: /opt/etc/apache2/apache2.conf
+        regexp: '^#ServerName'
+        line: 'ServerName 127.0.0.1'
+                  
+  handlers:
+    - name: start apache
+      shell: /opt/sbin/apache2 -k start
+      become: true
+    - name: set apache to listen on port 8080
+      lineinfile:
+        path: /opt/etc/apache2/apache2.conf
+        regexp: '^Listen 80'
+        line: 'Listen 8080'
+    - name: check apache status
+      shell: ps aux | grep httpd       
+
