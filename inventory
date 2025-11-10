@@ -1,0 +1,2 @@
+[my_hosts]
+192.168.2.102 ansible_user=admin
