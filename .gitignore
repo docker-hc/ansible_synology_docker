@@ -1,0 +1,6 @@
+.vault_pass
+*.retry
+collections/
+__pycache__/
+*.pyc
+.DS_Store
