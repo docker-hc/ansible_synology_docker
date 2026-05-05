@@ -1,0 +1,18 @@
+---
+- name: Gather facts and identify Entware
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather facts
+      ansible.builtin.gather_facts:
+
+    - name: Check if Entware is installed
+      ansible.builtin.stat:
+        path: /opt/bin/opkg
+      register: entware
+
+    - name: Show Entware status
+      debug:
+        msg: >
+          Entware is {{ 'installed' if entware.stat.exists else 'not installed' }}
+

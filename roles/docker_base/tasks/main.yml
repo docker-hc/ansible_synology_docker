@@ -1,0 +1,15 @@
+- name: Ensure Docker data path exists
+  file:
+    path: "{{ docker_data_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure internal Docker network exists
+  community.docker.docker_network:
+    name: "{{ docker_network_name }}"
+    driver: bridge
+    ipam_config:
+      - subnet: "{{ docker_network_subnet }}"
+

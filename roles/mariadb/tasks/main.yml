@@ -1,0 +1,27 @@
+---
+- name: Ensure MariaDB data directory exists
+  file:
+    path: "{{ docker_data_path }}/mariadb"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy MariaDB container
+  community.docker.docker_container:
+    name: "{{ mariadb.container_name }}"
+    image: "{{ mariadb.image | default('mariadb:11') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network_name }}"
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mariadb.root_password }}"
+      MYSQL_USER: "{{ mariadb.user }}"
+      MYSQL_PASSWORD: "{{ mariadb.user_password }}"
+      MYSQL_DATABASE: "{{ mariadb.database | default('nextcloud') }}"
+    volumes:
+      - "{{ docker_data_path }}/mariadb:/var/lib/mysql"
+    ports: []
+    memory: "{{ mariadb.memory | default('512m') }}"
+

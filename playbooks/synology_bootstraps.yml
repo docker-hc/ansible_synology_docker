@@ -1,0 +1,50 @@
+---
+- name: Synology Bootstrap – Entware Python + Packages
+  hosts: synology
+  become: yes
+
+  vars:
+    python_path: /opt/bin/python3
+    entware_packages:
+      - python3
+      - python3-pip
+      - git
+      - wget
+
+  tasks:
+
+    - name: Ensure /opt/bin is in root PATH permanently
+      lineinfile:
+        path: /root/.profile
+        line: 'export PATH=/opt/bin:$PATH'
+        create: yes
+
+    - name: Update Entware package list
+      shell: /opt/bin/opkg update
+      args:
+        executable: /bin/bash
+
+    - name: Install required Entware packages
+      shell: "/opt/bin/opkg list-installed | grep -q '^{{ item }} ' || /opt/bin/opkg install {{ item }}"
+      args:
+        executable: /bin/bash
+      loop: "{{ entware_packages }}"
+
+    - name: Ensure Python exists at pinned path
+      stat:
+        path: "{{ python_path }}"
+      register: python_stat
+
+    - name: Fail if Python not found
+      fail:
+        msg: "Python was not installed correctly at {{ python_path }}"
+      when: not python_stat.stat.exists
+
+    - name: Verify Python installation
+      command: "{{ python_path }} --version"
+      register: python_ver
+
+    - name: Show installed Python version
+      debug:
+        msg: "{{ python_ver.stdout }}"
+

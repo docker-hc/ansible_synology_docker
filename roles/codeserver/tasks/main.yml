@@ -1,0 +1,23 @@
+- name: Ensure Code Server data directory exists
+  file:
+    path: "{{ docker_data_path }}/codeserver"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Code Server container
+  community.docker.docker_container:
+    name: "{{ codeserver.container_name | default('codeserver') }}"
+    image: "{{ codeserver.image | default('lscr.io/linuxserver/code-server:latest') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network_name }}"
+    env:
+      PASSWORD: "{{ codeserver.password }}"
+    volumes:
+      - "{{ docker_data_path }}/codeserver:/config"
+    ports:
+      - "{{ codeserver.port | default('8443') }}:8443"
+    memory: "{{ codeserver.memory | default('512m') }}"

@@ -1,0 +1,40 @@
+---
+- name: Manage existing Docker containers on Synology
+  hosts: 192.168.2.102
+  become: yes
+  vars:
+    ansible_python_interpreter: /opt/bin/python3
+    managed_containers:
+      - nextcloud
+      - portainer
+
+  tasks:
+
+    - name: Detect Docker service name
+      shell: |
+        if /usr/syno/bin/synosystemctl list-units | grep -q pkgctl-ContainerManager; then
+          echo pkgctl-ContainerManager
+        else
+          echo pkgctl-Docker
+        fi
+      register: docker_service_name
+      changed_when: false
+
+    - name: Ensure Docker service is running
+      shell: |
+        /usr/syno/bin/synosystemctl status {{ docker_service_name.stdout }} >/dev/null 2>&1 || \
+        /usr/syno/bin/synosystemctl start {{ docker_service_name.stdout }}
+      args:
+        executable: /bin/bash
+
+    - name: List all Docker containers
+      community.docker.docker_container_info:
+        name: all
+      register: containers_info
+
+    - name: Ensure managed containers are running
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: started
+      loop: "{{ managed_containers }}"
+

@@ -1,0 +1,4 @@
+# Default Docker settings for all Synology hosts
+docker_network_name: synology_net
+docker_network_subnet: 172.25.0.0/16
+docker_data_path: /volume1/docker

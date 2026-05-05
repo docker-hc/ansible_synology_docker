@@ -1,0 +1,19 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Check if Entware is installed by checking for opkg
+      stat:
+        path: /opt/bin/opkg
+      register: opkg_installed
+
+    - name: Fail if Entware (opkg) is not found
+      fail:
+        msg: "Entware (opkg) is not installed!"
+      when: opkg_installed.stat.exists == False
+
+    - name: Debug output if Entware is found
+      debug:
+        msg: "Entware (opkg) is installed!"
+      when: opkg_installed.stat.exists == True
+
