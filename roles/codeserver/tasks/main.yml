@@ -34,6 +34,9 @@
 
 - name: Deploy Code Server container
   community.docker.docker_container:
+    dns_servers:
+      - 8.8.8.8
+      - 1.1.1.1  
     name: "{{ codeserver.container_name }}"
     image: "{{ codeserver.image }}"
     state: started
@@ -47,6 +50,7 @@
       PUID: "{{ codeserver.puid }}"
       PGID: "{{ codeserver.pgid }}"
       TZ: "{{ codeserver.timezone }}"
+      DOCKER_MODS: "linuxserver/mods:openssh-server"  
     volumes:
       - "{{ docker_data_path }}/codeserver/config:/config"
       - "{{ docker_data_path }}/codeserver/workspace:/workspace"
