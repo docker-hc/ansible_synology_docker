@@ -1,0 +1,6 @@
+---
+- name: Restart codeserver
+  community.docker.docker_container:
+    name: "{{ codeserver.container_name }}"
+    state: started
+    restart: true

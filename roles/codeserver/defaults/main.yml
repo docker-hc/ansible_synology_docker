@@ -1,0 +1,11 @@
+codeserver:
+  container_name: codeserver
+  image: "lscr.io/linuxserver/code-server:latest"
+  port: 8443
+  ssh_port: 2222
+  memory: "512m"
+  memory_swap: "1g"
+  cpus: 0.5
+  puid: "1000"
+  pgid: "1000"
+  timezone: "UTC"

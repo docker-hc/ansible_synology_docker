@@ -1,23 +1,67 @@
-- name: Ensure Code Server data directory exists
+- name: Ensure Code Server directories exist
   file:
-    path: "{{ docker_data_path }}/codeserver"
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
+  loop:
+    - "{{ docker_data_path }}/codeserver/config"
+    - "{{ docker_data_path }}/codeserver/workspace"
+    - "{{ docker_data_path }}/codeserver/.ssh"
+
+- name: Ensure SSH host keys exist
+  command: >
+    ssh-keygen -t {{ item.type }}
+    -f {{ docker_data_path }}/codeserver/config/ssh_host_{{ item.type }}_key
+    -N ""
+  args:
+    creates: "{{ docker_data_path }}/codeserver/config/ssh_host_{{ item.type }}_key"
+  loop:
+    - { type: rsa }
+    - { type: ed25519 }
+
+- name: Set correct permissions on SSH host keys
+  file:
+    path: "{{ docker_data_path }}/codeserver/config/ssh_host_{{ item }}_key"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - rsa
+    - ed25519
 
 - name: Deploy Code Server container
   community.docker.docker_container:
-    name: "{{ codeserver.container_name | default('codeserver') }}"
-    image: "{{ codeserver.image | default('lscr.io/linuxserver/code-server:latest') }}"
+    name: "{{ codeserver.container_name }}"
+    image: "{{ codeserver.image }}"
     state: started
     restart_policy: unless-stopped
+    pull: false
     networks:
       - name: "{{ docker_network_name }}"
     env:
       PASSWORD: "{{ codeserver.password }}"
+      SUDO_PASSWORD: "{{ codeserver.sudo_password }}"
+      PUID: "{{ codeserver.puid }}"
+      PGID: "{{ codeserver.pgid }}"
+      TZ: "{{ codeserver.timezone }}"
     volumes:
-      - "{{ docker_data_path }}/codeserver:/config"
+      - "{{ docker_data_path }}/codeserver/config:/config"
+      - "{{ docker_data_path }}/codeserver/workspace:/workspace"
+      - "{{ docker_data_path }}/codeserver/.ssh:/root/.ssh"
     ports:
-      - "{{ codeserver.port | default('8443') }}:8443"
-    memory: "{{ codeserver.memory | default('512m') }}"
+      - "{{ codeserver.port }}:8443"
+      - "{{ codeserver.ssh_port }}:22"
+    devices:
+      - "/dev/urandom:/dev/urandom"
+    capabilities:
+      - NET_ADMIN
+      - SYS_PTRACE
+    memory: "{{ codeserver.memory }}"
+    memory_swap: "{{ codeserver.memory_swap }}"
+    cpus: "{{ codeserver.cpus }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict"
