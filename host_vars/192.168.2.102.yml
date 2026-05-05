@@ -33,6 +33,7 @@ nextcloud:
   db_password: "{{ vault_mariadb_user_password }}"
   db_user: "nextcloud"
   database: "nextcloud"
+  port: 6001  
   memory: "1024m"
   memory_swap: "2g"
   puid: "1024"

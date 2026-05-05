@@ -3,8 +3,8 @@
   file:
     path: "{{ docker_data_path }}/mariadb"
     state: directory
-    owner: root
-    group: root
+    owner: "999"        # mysql user inside mariadb container
+    group: "999"
     mode: "0755"
 
 - name: Deploy MariaDB container
@@ -20,8 +20,13 @@
       MYSQL_USER: "{{ mariadb.user }}"
       MYSQL_PASSWORD: "{{ mariadb.user_password }}"
       MYSQL_DATABASE: "{{ mariadb.database | default('nextcloud') }}"
+      TZ: "{{ default_timezone }}"
     volumes:
       - "{{ docker_data_path }}/mariadb:/var/lib/mysql"
     ports: []
     memory: "{{ mariadb.memory | default('512m') }}"
-
+    memory_swap: "{{ mariadb.memory_swap | default('1g') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict

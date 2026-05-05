@@ -1,37 +1,48 @@
-- name: Ensure Nextcloud data directory exists
+---
+- name: Ensure Nextcloud directories exist
   file:
-    path: "{{ docker_data_path }}/nextcloud"
+    path: "{{ item }}"
     state: directory
-    owner: 33          # www-data inside container
-    group: 33
+    owner: "{{ nextcloud.puid }}"
+    group: "{{ nextcloud.pgid }}"
     mode: "0755"
+  loop:
+    - "{{ docker_data_path }}/nextcloud/config"
+    - "{{ docker_data_path }}/nextcloud/data"
 
 - name: Deploy Nextcloud container
   community.docker.docker_container:
     name: "{{ nextcloud.container_name | default('nextcloud') }}"
-    image: "{{ nextcloud.image | default('nextcloud:27') }}"
+    image: "{{ nextcloud.image | default('lscr.io/linuxserver/nextcloud:latest') }}"
     state: started
     restart_policy: unless-stopped
+    pull: false
     security_opts:
       - seccomp:unconfined
     capabilities:
       - SYS_ADMIN
       - NET_ADMIN
-    mounts:
-      - type: bind
-        source: /dev/urandom
-        target: /dev/urandom
+    devices:
+      - "/dev/urandom:/dev/urandom"
     networks:
       - name: "{{ docker_network_name }}"
     env:
+      PUID: "{{ nextcloud.puid }}"
+      PGID: "{{ nextcloud.pgid }}"
+      TZ: "{{ nextcloud.timezone }}"
       MYSQL_PASSWORD: "{{ nextcloud.db_password }}"
       MYSQL_DATABASE: "{{ nextcloud.database | default('nextcloud') }}"
       MYSQL_USER: "{{ nextcloud.db_user | default('nextcloud') }}"
       MYSQL_HOST: "{{ mariadb.container_name }}"
       REDIS_HOST: "{{ redis.container_name }}"
     volumes:
-      - "{{ docker_data_path }}/nextcloud:/var/www/html"
+      - "{{ docker_data_path }}/nextcloud/config:/config"
+      - "{{ docker_data_path }}/nextcloud/data:/data"
     ports:
-      - "6001:80"   # reverse proxy mapping
+      - "{{ nextcloud.port | default('6001') }}:80"
     memory: "{{ nextcloud.memory | default('1024m') }}"
-
+    memory_swap: "{{ nextcloud.memory_swap | default('2g') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict
