@@ -1,0 +1,51 @@
+# Ansible settings
+ansible_python_interpreter: /opt/bin/python3
+
+# Code Server
+codeserver:
+  container_name: codeserver
+  image: "lscr.io/linuxserver/code-server:latest"
+  password: "{{ vault_codeserver_password }}"
+  sudo_password: "{{ vault_codeserver_password }}"
+  port: 8443
+  ssh_port: 2222
+  memory: "512m"
+  memory_swap: "1g"
+  cpus: 0.5
+  puid: "1000"
+  pgid: "1000"
+  timezone: "Europe/Amsterdam"
+
+# MariaDB
+mariadb:
+  container_name: mariadb
+  image: "mariadb:11"
+  root_password: "{{ vault_mariadb_root_password }}"
+  user: "nextcloud"
+  user_password: "{{ vault_mariadb_user_password }}"
+  database: "nextcloud"
+  memory: "512m"
+  memory_swap: "1g"
+  cpus: 0.5
+
+# Nextcloud
+nextcloud:
+  container_name: nextcloud
+  image: "lscr.io/linuxserver/nextcloud:latest"
+  db_password: "{{ vault_mariadb_user_password }}"
+  db_user: "nextcloud"
+  database: "nextcloud"
+  memory: "1024m"
+  memory_swap: "2g"
+  cpus: 1
+  puid: "1000"
+  pgid: "1000"
+  timezone: "Europe/Amsterdam"
+
+# Redis
+redis:
+  container_name: redis
+  image: "redis:7"
+  memory: "256m"
+  memory_swap: "512m"
+  cpus: 0.25
