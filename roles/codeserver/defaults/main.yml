@@ -6,6 +6,6 @@ codeserver:
   memory: "512m"
   memory_swap: "1g"
   cpus: 0.5
-  puid: "1000"
-  pgid: "1000"
+  puid: "1024"
+  pgid: "100"
   timezone: "UTC"

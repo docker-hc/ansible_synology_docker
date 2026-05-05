@@ -2,8 +2,8 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ codeserver.puid }}"
+    group: "{{ codeserver.pgid }}"
     mode: "0755"
   loop:
     - "{{ docker_data_path }}/codeserver/config"
@@ -13,23 +13,24 @@
 - name: Ensure SSH host keys exist
   command: >
     ssh-keygen -t {{ item.type }}
-    -f {{ docker_data_path }}/codeserver/config/ssh_host_{{ item.type }}_key
+    -f {{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item.type }}_key
     -N ""
   args:
-    creates: "{{ docker_data_path }}/codeserver/config/ssh_host_{{ item.type }}_key"
+    creates: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item.type }}_key"
   loop:
     - { type: rsa }
-    - { type: ed25519 }
+    - { type: ed25519 }    
 
 - name: Set correct permissions on SSH host keys
   file:
-    path: "{{ docker_data_path }}/codeserver/config/ssh_host_{{ item }}_key"
+    path: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item }}_key"
     mode: "0600"
-    owner: root
-    group: root
+    owner: "{{ codeserver.puid }}"
+    group: "{{ codeserver.pgid }}"
   loop:
     - rsa
     - ed25519
+  ignore_errors: "{{ ansible_check_mode }}"    
 
 - name: Deploy Code Server container
   community.docker.docker_container:
@@ -64,4 +65,4 @@
     comparisons:
       volumes: strict
       env: strict
-      networks: strict"
+      networks: strict
