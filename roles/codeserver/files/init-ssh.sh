@@ -10,6 +10,6 @@ chown -R root:root /root/.ssh
 chmod 700 /root/.ssh
 chmod 600 /root/.ssh/authorized_keys 2>/dev/null || true
 
-# Start dropbear
+# Start dropbear in background (remove -F flag)
 mkdir -p /etc/dropbear
-dropbear -p 2222 -F -E -R
+dropbear -p 2222 -E -R

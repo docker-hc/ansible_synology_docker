@@ -1,14 +1,15 @@
 ---
 - name: Ensure Nextcloud directories exist
   file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: "{{ nextcloud.puid }}"
     group: "{{ nextcloud.pgid }}"
-    mode: "0755"
+    mode: "{{item.mode}}"
   loop:
-    - "{{ docker_data_path }}/nextcloud/config"
-    - "{{ docker_data_path }}/nextcloud/data"
+    - { path: "{{ docker_data_path }}/nextcloud/config", mode: "0755" }
+    - { path: "{{ docker_data_path }}/nextcloud/data", mode: "0770" }
+    
 
 - name: Deploy Nextcloud container
   community.docker.docker_container:

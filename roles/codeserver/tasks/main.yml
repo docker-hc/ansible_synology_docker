@@ -61,7 +61,6 @@
       - name: "{{ docker_network_name }}"
     env:
       PASSWORD: "{{ codeserver.password }}"
-      SUDO_PASSWORD: "{{ codeserver.sudo_password }}"
       PUID: "{{ codeserver.puid }}"
       PGID: "{{ codeserver.pgid }}"
       TZ: "{{ codeserver.timezone }}"
