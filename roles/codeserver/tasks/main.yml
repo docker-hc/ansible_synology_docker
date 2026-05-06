@@ -1,15 +1,15 @@
 - name: Ensure Code Server directories exist
   file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
-    owner: "{{ codeserver.puid }}"
-    group: "{{ codeserver.pgid }}"
-    mode: "0755"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ docker_data_path }}/codeserver/config"
-    - "{{ docker_data_path }}/codeserver/workspace"
-    - "{{ docker_data_path }}/codeserver/.ssh"
-    - "{{ docker_data_path }}/codeserver/custom-cont-init.d"
+    - { path: "{{ docker_data_path }}/codeserver/config", owner: "{{ codeserver.puid }}", group: "{{ codeserver.pgid }}", mode: "0755" }
+    - { path: "{{ docker_data_path }}/codeserver/workspace", owner: "{{ codeserver.puid }}", group: "{{ codeserver.pgid }}", mode: "0755" }
+    - { path: "{{ docker_data_path }}/codeserver/.ssh", owner: "root", group: "root", mode: "0700" }
+    - { path: "{{ docker_data_path }}/codeserver/custom-cont-init.d", owner: "root", group: "root", mode: "0755" }
 
 - name: Copy SSH init script
   copy:
@@ -19,12 +19,12 @@
     group: root
     mode: "0755"
 
-- name: Ensure authorized_keys exists
+- name: Ensure authorized_keys exists with correct key
   copy:
-    content: "{{ codeserver.ssh_public_key }}"
+    content: "{{ codeserver.ssh_public_key }}\n"
     dest: "{{ docker_data_path }}/codeserver/.ssh/authorized_keys"
-    owner: "{{ codeserver.puid }}"
-    group: "{{ codeserver.pgid }}"
+    owner: root
+    group: root
     mode: "0600"
 
 - name: Ensure SSH host keys exist
@@ -42,8 +42,8 @@
   file:
     path: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item }}_key"
     mode: "0600"
-    owner: "{{ codeserver.puid }}"
-    group: "{{ codeserver.pgid }}"
+    owner: root
+    group: root
   loop:
     - rsa
     - ed25519
@@ -56,7 +56,7 @@
     state: started
     restart_policy: unless-stopped
     pull: false
-    privileged: true  
+    privileged: true
     networks:
       - name: "{{ docker_network_name }}"
     env:
