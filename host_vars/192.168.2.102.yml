@@ -3,6 +3,7 @@ ansible_python_interpreter: /opt/bin/python3
 
 # Code Server
 codeserver:
+  ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIGvHZGln74hveFbkxovy/S2NSpdeNnqSfHgssh+KRDn"
   container_name: codeserver
   image: "lscr.io/linuxserver/code-server:latest"
   password: "{{ vault_codeserver_password }}"
