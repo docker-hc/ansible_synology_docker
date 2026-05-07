@@ -47,3 +47,13 @@
       volumes: strict
       env: strict
       networks: strict
+
+- name: Set Nextcloud trusted domains
+  shell: >
+    /usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ
+    config:system:set trusted_domains {{ item.index }}
+    --value='{{ item.domain }}'
+  loop:
+    - { index: 0, domain: "192.168.2.102:6001" }
+    - { index: 1, domain: "*.dk-cyberworld.synology.me" }
+  changed_when: false        
