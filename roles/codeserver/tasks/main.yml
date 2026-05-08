@@ -11,6 +11,20 @@
     - { path: "{{ docker_data_path }}/codeserver/.ssh", owner: "root", group: "root", mode: "0700" }
     - { path: "{{ docker_data_path }}/codeserver/custom-cont-init.d", owner: "root", group: "root", mode: "0755" }
 
+- name: Ensure codeserver outgoing SSH key exists
+  command: >
+    dropbearkey -t ed25519 -f {{ docker_data_path }}/codeserver/.ssh/id_dropbear
+  args:
+    creates: "{{ docker_data_path }}/codeserver/.ssh/id_dropbear"
+  register: dropbear_key
+
+- name: Set correct permissions on outgoing SSH key
+  file:
+    path: "{{ docker_data_path }}/codeserver/.ssh/id_dropbear"
+    mode: "0600"
+    owner: root
+    group: root      
+
 - name: Copy SSH init script
   copy:
     src: init-ssh.sh
