@@ -1,0 +1,53 @@
+Setup & Configuration
+bashgit config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --list                    # verify your config
+Cloning & Initializing
+bashgit clone git@github.com:user/repo.git        # clone via SSH
+git clone https://github.com/user/repo.git    # clone via HTTPS
+git init                                       # init new local repo
+git remote add origin git@github.com:user/repo.git  # link to remote
+Daily Pull Workflow
+bashgit fetch origin              # download changes, don't merge yet
+git pull                      # fetch + merge (current branch)
+git pull origin main          # pull specific branch
+git pull --rebase origin main # pull with rebase instead of merge
+Daily Push Workflow
+bashgit status                    # see what's changed
+git add .                     # stage all changes
+git add filename.txt          # stage specific file
+git commit -m "your message"  # commit staged changes
+git push                      # push to tracked remote branch
+git push origin main          # push to specific branch
+git push -u origin main       # push + set upstream (first time)
+Branching
+bashgit branch                        # list local branches
+git branch feature/my-feature     # create new branch
+git checkout feature/my-feature   # switch to branch
+git checkout -b feature/my-feature # create + switch in one step
+git push origin feature/my-feature # push branch to GitHub
+git branch -d feature/my-feature  # delete local branch
+git push origin --delete feature/my-feature  # delete remote branch
+Stashing (save work temporarily)
+bashgit stash                    # stash uncommitted changes
+git stash pop                # restore stashed changes
+git stash list               # see all stashes
+Logs & Inspection
+bashgit log --oneline            # compact commit history
+git log --oneline --graph    # visual branch graph
+git diff                     # see unstaged changes
+git diff --staged            # see staged changes
+Undoing Things
+bashgit restore filename.txt          # discard unstaged changes
+git reset HEAD~1                  # undo last commit (keep changes)
+git reset --hard HEAD~1           # undo last commit (discard changes)
+git revert <commit-hash>          # safely undo a pushed commit
+Common SSH Tips
+bashssh -T git@github.com             # test SSH connection to GitHub
+eval "$(ssh-agent -s)"            # start SSH agent
+ssh-add ~/.ssh/id_rsa             # add your key to the agent
+A few key tips:
+
+Since your public key is already in place, prefer SSH URLs (git@github.com:...) over HTTPS to avoid password prompts
+Use git pull --rebase to keep a cleaner history when collaborating
+Always git pull before you git push when working with others to avoid conflicts

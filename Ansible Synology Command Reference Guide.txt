@@ -1,0 +1,202 @@
+Command Reference Guide
+Ansible — Core Commands
+bash# Always run from project root
+cd /etc/ansible/ansible_synology_docker
+
+# Dry run — see what would change
+ansible-playbook playbooks/deploy_container_stacks.yml --check --diff --limit 192.168.2.102
+
+# Real run — apply changes
+ansible-playbook playbooks/deploy_container_stacks.yml --limit 192.168.2.102
+
+# Run single role only
+ansible-playbook playbooks/deploy_container_stacks.yml --limit 192.168.2.102 --tags codeserver
+
+# Check inventory
+ansible-inventory --list
+
+# Ping host
+ansible -m ping 192.168.2.102
+
+# Run ad-hoc command
+ansible -m shell -a "your_command" 192.168.2.102
+
+Vault — Secrets Management
+bash# View encrypted vault
+ansible-vault view group_vars/all/vault.yml
+
+# Edit encrypted vault
+ansible-vault edit group_vars/all/vault.yml
+
+# Encrypt new file
+ansible-vault encrypt group_vars/all/vault.yml
+
+# Decrypt file
+ansible-vault decrypt group_vars/all/vault.yml
+
+# Re-encrypt with new password
+ansible-vault rekey group_vars/all/vault.yml
+
+# Encrypt single string
+ansible-vault encrypt_string 'mysecret' --name 'vault_myvar'
+
+Git — Repository Management
+bash# Check status
+git status
+
+# Pull latest changes
+git pull
+
+# Stage all changes
+git add .
+
+# Check no plain passwords before commit
+git diff --cached | grep -i password
+
+# Commit
+git commit -m "your message"
+
+# Push
+git push
+
+# View recent commits
+git log --oneline -10
+
+# Clean git history of sensitive file
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch host_vars/192.168.2.102.yml" \
+  --prune-empty --tag-name-filter cat -- --all
+git push origin --force --all
+git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+
+Docker — Container Management
+bash# List all running containers
+ansible -m shell -a "/usr/local/bin/docker ps" 192.168.2.102
+
+# View container logs
+ansible -m shell -a "/usr/local/bin/docker logs codeserver --tail 30" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker logs nextcloud --tail 30" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker logs mariadb --tail 30" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker logs redis --tail 30" 192.168.2.102
+
+# Restart container
+ansible -m shell -a "/usr/local/bin/docker restart codeserver" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker restart nextcloud" 192.168.2.102
+
+# Stop and remove container (force recreate)
+ansible -m shell -a "/usr/local/bin/docker stop codeserver && /usr/local/bin/docker rm codeserver" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker stop nextcloud && /usr/local/bin/docker rm nextcloud" 192.168.2.102
+
+# Pull new image
+ansible -m shell -a "/usr/local/bin/docker pull lscr.io/linuxserver/code-server:latest" 192.168.2.102
+ansible -m shell -a "/usr/local/bin/docker pull lscr.io/linuxserver/nextcloud:latest" 192.168.2.102
+
+# Inspect container env
+ansible -m shell -a "/usr/local/bin/docker inspect codeserver --format '{% raw %}{{.Config.Env}}{% endraw %}'" 192.168.2.102
+
+# Inspect container ports
+ansible -m shell -a "/usr/local/bin/docker inspect codeserver --format '{% raw %}{{.HostConfig.PortBindings}}{% endraw %}'" 192.168.2.102
+
+# Execute command inside container
+ansible -m shell -a "/usr/local/bin/docker exec codeserver bash -c 'your_command'" 192.168.2.102
+
+SSH — Codeserver Access
+bash# Connect to codeserver via SSH
+ssh -i ~/.ssh/ansible -p 2222 root@192.168.2.102
+
+# Clear known hosts if host key changed after recreate
+ssh-keygen -f '/root/.ssh/known_hosts' -R '[192.168.2.102]:2222'
+
+# Add public key to codeserver authorized_keys
+echo 'ssh-ed25519 AAAA...your_key' > /volume1/docker/codeserver/.ssh/authorized_keys
+
+# Check dropbear is running inside container
+ansible -m shell -a "/usr/local/bin/docker exec codeserver ps aux | grep dropbear" 192.168.2.102
+
+Nextcloud — Administration
+bash# Check status
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ status" 192.168.2.102
+
+# List trusted domains
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ config:system:get trusted_domains" 192.168.2.102
+
+# Add trusted domain
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ config:system:set trusted_domains 2 --value='yourdomain.com'" 192.168.2.102
+
+# Reset admin password
+ansible -m shell -a "/usr/local/bin/docker exec -e OC_PASS='newpassword123!' nextcloud php /app/www/src/occ user:resetpassword --password-from-env admin" 192.168.2.102
+
+# Enable maintenance mode
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ maintenance:mode --on" 192.168.2.102
+
+# Disable maintenance mode
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ maintenance:mode --off" 192.168.2.102
+
+# Run upgrade after image update
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ upgrade" 192.168.2.102
+
+# Fix config symlink after image update
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud bash -c 'rm -f /app/www/src/config/config.php && ln -s /config/www/nextcloud/config/config.php /app/www/src/config/config.php'" 192.168.2.102
+
+# Fix config ownership
+ansible -m shell -a "/usr/local/bin/docker exec nextcloud chown -R abc:abc /config/www/nextcloud/config" 192.168.2.102
+
+MariaDB — Database Management
+bash# Connect to MariaDB
+ansible -m shell -a "/usr/local/bin/docker exec mariadb mariadb -u root -p'your_root_password' -e 'SHOW DATABASES;'" 192.168.2.102
+
+# Change root password
+ansible -m shell -a "/usr/local/bin/docker exec mariadb mariadb -u root -p'oldpassword' -e \"ALTER USER 'root'@'%' IDENTIFIED BY 'newpassword';\"" 192.168.2.102
+
+# Change user password
+ansible -m shell -a "/usr/local/bin/docker exec mariadb mariadb -u root -p'rootpassword' -e \"ALTER USER 'nextcloud'@'%' IDENTIFIED BY 'newpassword';\"" 192.168.2.102
+
+Backup — Data Directories
+bash# Backup all docker data
+ansible -m shell -a "cp -r /volume1/docker /volume1/docker_backup_$(date +%Y%m%d)" 192.168.2.102
+
+# Backup specific service
+ansible -m shell -a "cp -r /volume1/docker/nextcloud /volume1/docker/nextcloud_backup_$(date +%Y%m%d)" 192.168.2.102
+ansible -m shell -a "cp -r /volume1/docker/mariadb /volume1/docker/mariadb_backup_$(date +%Y%m%d)" 192.168.2.102
+
+# List backups
+ansible -m shell -a "ls /volume1/docker/ | grep backup" 192.168.2.102
+
+# Remove old backup
+ansible -m shell -a "rm -rf /volume1/docker/nextcloud_backup_20260506" 192.168.2.102
+
+Verification — Health Checks
+bash# Check all web UIs respond
+curl -I http://192.168.2.102:8443    # codeserver
+curl -I http://192.168.2.102:6001    # nextcloud
+curl -I http://192.168.2.102:9000    # portainer
+
+# Check no plain passwords in tracked files
+grep -r "password" host_vars/
+grep -r "password" group_vars/all/synology.yml
+
+# Check vault is encrypted
+head -2 group_vars/all/vault.yml
+
+# Check .vault_pass not tracked
+git status ~/.vault_pass
+
+# Full idempotency check
+ansible-playbook playbooks/deploy_container_stacks.yml --check --diff --limit 192.168.2.102
+# Must show changed=0
+
+Update Workflow — Applying Changes from GitHub
+bash# Pull latest from GitHub
+git pull
+
+# Review what changed
+git log --oneline -5
+git diff HEAD~1
+
+# Dry run
+ansible-playbook playbooks/deploy_container_stacks.yml --check --diff --limit 192.168.2.102
+
+# Apply
+ansible-playbook playbooks/deploy_container_stacks.yml --limit 192.168.2.102
