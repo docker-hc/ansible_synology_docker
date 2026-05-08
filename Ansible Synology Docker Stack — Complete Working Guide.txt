@@ -469,4 +469,4 @@ codeserver SSH   → ssh -i ~/.ssh/ansible -p 2222 root@192.168.2.102
 nextcloud        → http://192.168.2.102:6001
 mariadb          → internal port 3306
 redis            → internal port 6379
-portainer        → http://192.168.2.102:9000Sonnet 4.6Claude is AI and can make mistakes. Please dou
+portainer        → http://192.168.2.102:9000
