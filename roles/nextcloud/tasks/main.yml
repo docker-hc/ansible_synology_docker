@@ -48,6 +48,19 @@
       env: strict
       networks: strict
 
+- name: Fix Nextcloud config symlink for new image structure
+  command: >
+    /usr/local/bin/docker exec nextcloud bash -c
+    'if [ ! -L /app/www/src/config/config.php ]; then
+      rm -f /app/www/src/config/config.php &&
+      ln -s /config/www/nextcloud/config/config.php /app/www/src/config/config.php;
+    fi'
+  changed_when: false
+
+- name: Fix Nextcloud config directory ownership
+  command: /usr/local/bin/docker exec nextcloud chown -R abc:abc /config/www/nextcloud/config
+  changed_when: false
+
 - name: Set Nextcloud trusted domains
   shell: >
     /usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ
@@ -56,4 +69,4 @@
   loop:
     - { index: 0, domain: "192.168.2.102:6001" }
     - { index: 1, domain: "*.dk-cyberworld.synology.me" }
-  changed_when: false        
+  changed_when: false
