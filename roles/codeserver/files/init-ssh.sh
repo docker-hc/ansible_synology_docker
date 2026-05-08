@@ -18,6 +18,13 @@ if [ -f /root/.ssh/id_dropbear ]; then
     chmod 700 /home/abc/.ssh
     chmod 600 /home/abc/.ssh/id_dropbear
 
+# Add Ubuntu VM to known hosts
+mkdir -p /config/.ssh
+echo '192.168.2.15 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMFUrQ5yV0NXdT6am+QUK+zncFtnR4fRyV0Eb64fRLn' >> /config/.ssh/known_hosts
+chown -R abc:abc /config/.ssh
+chmod 700 /config/.ssh
+chmod 600 /config/.ssh/known_hosts
+
 # Start dropbear in background (remove -F flag)
 mkdir -p /etc/dropbear
 dropbear -p 2222 -E -R
