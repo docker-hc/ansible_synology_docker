@@ -1,0 +1,472 @@
+Ansible Synology Docker Stack — Complete Working Guide
+
+Prerequisites
+
+Ubuntu VM with Ansible installed
+SSH key pair at ~/.ssh/ansible
+Synology NAS at 192.168.2.102 SSH port 2299
+Docker installed on Synology
+
+
+Project Structure
+ansible_synology_docker/
+├── ansible.cfg
+├── .gitignore
+├── inventory
+├── group_vars/
+│   └── all/
+│       ├── synology.yml
+│       └── vault.yml          ← encrypted
+├── host_vars/
+│   └── 192.168.2.102.yml
+├── playbooks/
+│   └── deploy_container_stacks.yml
+└── roles/
+    ├── docker_base/
+    ├── codeserver/
+    │   ├── defaults/main.yml
+    │   ├── handlers/main.yml
+    │   ├── tasks/main.yml
+    │   └── files/init-ssh.sh
+    ├── mariadb/
+    ├── nextcloud/
+    └── redis/
+
+Step 1 — Create Directory Structure
+bashmkdir -p roles/codeserver/{defaults,handlers,tasks,files}
+mkdir -p group_vars/all
+
+Step 2 — Vault Setup
+bash# Create vault password file — never commit this
+echo "your_vault_master_password" > ~/.vault_pass
+chmod 600 ~/.vault_pass
+
+# Create vault secrets file
+nano group_vars/all/vault.yml
+yamlvault_codeserver_password: "your_codeserver_password"
+vault_mariadb_root_password: "your_mariadb_root_password"
+vault_mariadb_user_password: "your_mariadb_user_password"
+bash# Encrypt it immediately
+ansible-vault encrypt group_vars/all/vault.yml
+
+# Verify encrypted
+head -2 group_vars/all/vault.yml
+# Must show: $ANSIBLE_VAULT;1.1;AES256
+
+# Verify readable
+ansible-vault view group_vars/all/vault.yml
+
+Step 3 — group_vars/all/synology.yml
+yaml# Docker network
+docker_network_name: synology_net
+docker_network_subnet: 172.25.0.0/16
+docker_data_path: /volume1/docker
+
+# Global defaults
+default_timezone: Europe/Amsterdam
+default_puid: "1024"
+default_pgid: "100"
+
+Step 4 — host_vars/192.168.2.102.yml
+yaml# Ansible settings
+ansible_python_interpreter: /opt/bin/python3
+
+# Code Server
+codeserver:
+  container_name: codeserver
+  image: "lscr.io/linuxserver/code-server:latest"
+  password: "{{ vault_codeserver_password }}"
+  sudo_password: "{{ vault_codeserver_password }}"
+  ssh_public_key: "ssh-ed25519 AAAA...your_public_key"
+  port: 8443
+  ssh_port: 2222
+  memory: "512m"
+  memory_swap: "1g"
+  puid: "1024"
+  pgid: "100"
+  timezone: "Europe/Amsterdam"
+
+# MariaDB
+mariadb:
+  container_name: mariadb
+  image: "mariadb:11"
+  root_password: "{{ vault_mariadb_root_password }}"
+  user: "nextcloud"
+  user_password: "{{ vault_mariadb_user_password }}"
+  database: "nextcloud"
+  memory: "512m"
+  memory_swap: "1g"
+  puid: "999"
+  pgid: "999"
+
+# Nextcloud
+nextcloud:
+  container_name: nextcloud
+  image: "lscr.io/linuxserver/nextcloud:latest"
+  db_password: "{{ vault_mariadb_user_password }}"
+  db_user: "nextcloud"
+  database: "nextcloud"
+  port: 6001
+  memory: "1024m"
+  memory_swap: "2g"
+  puid: "1024"
+  pgid: "100"
+  timezone: "Europe/Amsterdam"
+
+# Redis
+redis:
+  container_name: redis
+  image: "redis:7"
+  memory: "256m"
+  memory_swap: "512m"
+  puid: "999"
+  pgid: "999"
+
+Step 5 — ansible.cfg
+ini[defaults]
+inventory             = inventory
+private_key_file      = ~/.ssh/ansible
+roles_path            = roles
+collections_paths     = collections
+retry_files_enabled   = False
+stdout_callback       = yaml
+timeout               = 30
+forks                 = 10
+gathering             = smart
+vault_password_file   = ~/.vault_pass
+
+[ssh_connection]
+ssh_args              = -o Port=2299
+transfer_method       = piped
+scp_if_ssh            = False
+pipelining            = True
+interpreter_python    = /opt/bin/python3
+
+Step 6 — .gitignore
+.vault_pass
+*.retry
+collections/
+__pycache__/
+*.pyc
+.DS_Store
+
+Step 7 — SSH Init Script roles/codeserver/files/init-ssh.sh
+bash#!/bin/bash
+# Install dropbear if not present
+if ! command -v dropbear &> /dev/null; then
+    apt-get update -qq
+    apt-get install -y --no-install-recommends dropbear
+fi
+
+# Fix SSH directory ownership
+chown -R root:root /root/.ssh
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys 2>/dev/null || true
+
+# Start dropbear in background
+mkdir -p /etc/dropbear
+dropbear -p 2222 -E -R
+
+Step 8 — roles/codeserver/defaults/main.yml
+yaml---
+codeserver:
+  container_name: codeserver
+  image: "lscr.io/linuxserver/code-server:latest"
+  port: 8443
+  ssh_port: 2222
+  memory: "512m"
+  memory_swap: "1g"
+  puid: "1024"
+  pgid: "100"
+  timezone: "UTC"
+
+Step 9 — roles/codeserver/handlers/main.yml
+yaml- name: Restart codeserver
+  community.docker.docker_container:
+    name: "{{ codeserver.container_name }}"
+    state: started
+    restart: true
+
+Step 10 — roles/codeserver/tasks/main.yml
+yaml- name: Ensure Code Server directories exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ docker_data_path }}/codeserver/config", owner: "{{ codeserver.puid }}", group: "{{ codeserver.pgid }}", mode: "0755" }
+    - { path: "{{ docker_data_path }}/codeserver/workspace", owner: "{{ codeserver.puid }}", group: "{{ codeserver.pgid }}", mode: "0755" }
+    - { path: "{{ docker_data_path }}/codeserver/.ssh", owner: "root", group: "root", mode: "0700" }
+    - { path: "{{ docker_data_path }}/codeserver/custom-cont-init.d", owner: "root", group: "root", mode: "0755" }
+
+- name: Copy SSH init script
+  copy:
+    src: init-ssh.sh
+    dest: "{{ docker_data_path }}/codeserver/custom-cont-init.d/01-ssh.sh"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure authorized_keys exists with correct key
+  copy:
+    content: "{{ codeserver.ssh_public_key }}\n"
+    dest: "{{ docker_data_path }}/codeserver/.ssh/authorized_keys"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure SSH host keys exist
+  command: >
+    ssh-keygen -t {{ item.type }}
+    -f {{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item.type }}_key
+    -N ""
+  args:
+    creates: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item.type }}_key"
+  loop:
+    - { type: rsa }
+    - { type: ed25519 }
+
+- name: Set correct permissions on SSH host keys
+  file:
+    path: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item }}_key"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - rsa
+    - ed25519
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Deploy Code Server container
+  community.docker.docker_container:
+    name: "{{ codeserver.container_name }}"
+    image: "{{ codeserver.image }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: false
+    privileged: true
+    networks:
+      - name: "{{ docker_network_name }}"
+    env:
+      PASSWORD: "{{ codeserver.password }}"
+      PUID: "{{ codeserver.puid }}"
+      PGID: "{{ codeserver.pgid }}"
+      TZ: "{{ codeserver.timezone }}"
+    volumes:
+      - "{{ docker_data_path }}/codeserver/config:/config"
+      - "{{ docker_data_path }}/codeserver/workspace:/workspace"
+      - "{{ docker_data_path }}/codeserver/.ssh:/root/.ssh"
+      - "{{ docker_data_path }}/codeserver/custom-cont-init.d:/custom-cont-init.d"
+    ports:
+      - "{{ codeserver.port }}:8443"
+      - "{{ codeserver.ssh_port }}:2222"
+    devices:
+      - "/dev/urandom:/dev/urandom:rwm"
+      - "/dev/random:/dev/random:rwm"
+    capabilities:
+      - NET_ADMIN
+      - SYS_PTRACE
+    memory: "{{ codeserver.memory }}"
+    memory_swap: "{{ codeserver.memory_swap }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict
+
+Step 11 — roles/mariadb/tasks/main.yml
+yaml---
+- name: Ensure MariaDB data directory exists
+  file:
+    path: "{{ docker_data_path }}/mariadb"
+    state: directory
+    owner: "{{ mariadb.puid | default('999') }}"
+    group: "{{ mariadb.pgid | default('999') }}"
+    mode: "0755"
+
+- name: Deploy MariaDB container
+  community.docker.docker_container:
+    name: "{{ mariadb.container_name }}"
+    image: "{{ mariadb.image | default('mariadb:11') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network_name }}"
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mariadb.root_password }}"
+      MYSQL_USER: "{{ mariadb.user }}"
+      MYSQL_PASSWORD: "{{ mariadb.user_password }}"
+      MYSQL_DATABASE: "{{ mariadb.database | default('nextcloud') }}"
+      TZ: "{{ default_timezone }}"
+    volumes:
+      - "{{ docker_data_path }}/mariadb:/var/lib/mysql"
+    ports: []
+    memory: "{{ mariadb.memory | default('512m') }}"
+    memory_swap: "{{ mariadb.memory_swap | default('1g') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict
+
+Step 12 — roles/redis/tasks/main.yml
+yaml---
+- name: Ensure Redis data directory exists
+  file:
+    path: "{{ docker_data_path }}/redis"
+    state: directory
+    owner: "{{ redis.puid | default('999') }}"
+    group: "{{ redis.pgid | default('999') }}"
+    mode: "0755"
+
+- name: Deploy Redis container
+  community.docker.docker_container:
+    name: "{{ redis.container_name }}"
+    image: "{{ redis.image | default('redis:7') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network_name }}"
+    volumes:
+      - "{{ docker_data_path }}/redis:/data"
+    command: redis-server --appendonly yes
+    ports: []
+    memory: "{{ redis.memory | default('256m') }}"
+    memory_swap: "{{ redis.memory_swap | default('512m') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict
+
+Step 13 — roles/nextcloud/tasks/main.yml
+yaml---
+- name: Ensure Nextcloud directories exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ nextcloud.puid }}"
+    group: "{{ nextcloud.pgid }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ docker_data_path }}/nextcloud/config", mode: "0755" }
+    - { path: "{{ docker_data_path }}/nextcloud/data", mode: "0770" }
+
+- name: Deploy Nextcloud container
+  community.docker.docker_container:
+    name: "{{ nextcloud.container_name }}"
+    image: "{{ nextcloud.image }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: false
+    security_opts:
+      - seccomp:unconfined
+    capabilities:
+      - SYS_ADMIN
+      - NET_ADMIN
+    devices:
+      - "/dev/urandom:/dev/urandom"
+    networks:
+      - name: "{{ docker_network_name }}"
+    env:
+      PUID: "{{ nextcloud.puid }}"
+      PGID: "{{ nextcloud.pgid }}"
+      TZ: "{{ nextcloud.timezone }}"
+      MYSQL_PASSWORD: "{{ nextcloud.db_password }}"
+      MYSQL_DATABASE: "{{ nextcloud.database | default('nextcloud') }}"
+      MYSQL_USER: "{{ nextcloud.db_user | default('nextcloud') }}"
+      MYSQL_HOST: "{{ mariadb.container_name }}"
+      REDIS_HOST: "{{ redis.container_name }}"
+    volumes:
+      - "{{ docker_data_path }}/nextcloud/config:/config"
+      - "{{ docker_data_path }}/nextcloud/data:/data"
+    ports:
+      - "{{ nextcloud.port | default('6001') }}:80"
+    memory: "{{ nextcloud.memory | default('1024m') }}"
+    memory_swap: "{{ nextcloud.memory_swap | default('2g') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict
+
+- name: Fix Nextcloud config symlink for new image structure
+  command: >
+    /usr/local/bin/docker exec nextcloud bash -c
+    'if [ ! -L /app/www/src/config/config.php ]; then
+      rm -f /app/www/src/config/config.php &&
+      ln -s /config/www/nextcloud/config/config.php /app/www/src/config/config.php;
+    fi'
+  changed_when: false
+
+- name: Fix Nextcloud config directory ownership
+  command: /usr/local/bin/docker exec nextcloud chown -R abc:abc /config/www/nextcloud/config
+  changed_when: false
+
+- name: Set Nextcloud trusted domains
+  shell: >
+    /usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ
+    config:system:set trusted_domains {{ item.index }}
+    --value='{{ item.domain }}'
+  loop:
+    - { index: 0, domain: "192.168.2.102:6001" }
+    - { index: 1, domain: "*.dk-cyberworld.synology.me" }
+  changed_when: false
+
+Step 14 — Initial Nextcloud Setup
+On first run go to http://192.168.2.102:6001 and fill in:
+Admin username:  admin
+Admin password:  choose a password
+
+Data folder:     /data
+
+Database:        MySQL/MariaDB
+Database user:   nextcloud
+Database pass:   your vault_mariadb_user_password
+Database name:   nextcloud
+Database host:   mariadb:3306
+
+Step 15 — Deploy
+bash# Always run from project root
+cd /etc/ansible/ansible_synology_docker
+
+# Dry run first
+ansible-playbook playbooks/deploy_container_stacks.yml --check --diff --limit 192.168.2.102
+
+# Real run
+ansible-playbook playbooks/deploy_container_stacks.yml --limit 192.168.2.102
+
+Step 16 — Verify
+bash# All containers running
+ansible -m shell -a "/usr/local/bin/docker ps" 192.168.2.102
+
+# SSH into codeserver
+ssh -i ~/.ssh/ansible -p 2222 root@192.168.2.102
+
+# Web UIs
+curl -I http://192.168.2.102:8443    # codeserver
+curl -I http://192.168.2.102:6001    # nextcloud
+
+# Idempotent check
+ansible-playbook playbooks/deploy_container_stacks.yml --check --diff --limit 192.168.2.102
+# Must show changed=0
+
+Key Lessons Learned
+✗ cpus:           not supported on Synology kernel — omit it
+✗ openssh:        fails due to arc4random entropy — use dropbear
+✗ DOCKER_MODS:    unreliable on Synology — use custom-cont-init.d
+✗ custom-init:    must be mounted at /custom-cont-init.d not /config
+✗ dropbear -F:    blocks code-server from starting — use background mode
+✗ SUDO_PASSWORD:  causes arc4random crash — remove it
+✗ latest tag:     skips major versions — upgrade one major at a time
+✓ privileged:     required for /dev/urandom on Synology kernel
+✓ dropbear:       works where openssh fails
+✓ root owns .ssh: required for dropbear key auth
+✓ config symlink: required for nextcloud v33 image structure
+✓ vault:          all secrets encrypted, safe to commit
+
+Service Overview
+codeserver web   → http://192.168.2.102:8443
+codeserver SSH   → ssh -i ~/.ssh/ansible -p 2222 root@192.168.2.102
+nextcloud        → http://192.168.2.102:6001
+mariadb          → internal port 3306
+redis            → internal port 6379
+portainer        → http://192.168.2.102:9000Sonnet 4.6Claude is AI and can make mistakes. Please dou
