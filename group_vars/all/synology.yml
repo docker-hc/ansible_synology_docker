@@ -5,5 +5,5 @@ docker_data_path: /volume1/docker
 
 # Global defaults
 default_timezone: Europe/Amsterdam
-default_puid: "1000"
-default_pgid: "1000"
+default_puid: "1024"
+default_pgid: "100"
