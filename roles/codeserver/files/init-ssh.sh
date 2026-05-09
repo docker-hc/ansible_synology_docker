@@ -26,6 +26,11 @@ chown -R abc:abc /config/.ssh
 chmod 700 /config/.ssh
 chmod 600 /config/.ssh/known_hosts
 
+# Persist git config from workspace
+ln -sf /workspace/.gitconfig /root/.gitconfig 2>/dev/null || true
+ln -sf /workspace/.gitconfig /home/abc/.gitconfig 2>/dev/null || true
+
 # Start dropbear in background (remove -F flag)
 mkdir -p /etc/dropbear
 dropbear -p 2222 -E -R
+
