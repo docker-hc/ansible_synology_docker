@@ -7,3 +7,6 @@ docker_data_path: /volume1/docker
 default_timezone: Europe/Amsterdam
 default_puid: "1024"
 default_pgid: "100"
+
+ubuntu_vm_ip: "192.168.2.15"
+ubuntu_vm_ssh_port: "2222"
