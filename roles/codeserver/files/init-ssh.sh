@@ -17,6 +17,7 @@ if [ -f /root/.ssh/id_dropbear ]; then
     chown -R abc:abc /home/abc/.ssh
     chmod 700 /home/abc/.ssh
     chmod 600 /home/abc/.ssh/id_dropbear
+fi
 
 # Add Ubuntu VM to known hosts
 mkdir -p /config/.ssh
