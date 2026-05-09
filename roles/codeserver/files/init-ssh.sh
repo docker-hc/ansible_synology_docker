@@ -5,6 +5,16 @@ if ! command -v dropbear &> /dev/null; then
     apt-get install -y --no-install-recommends dropbear
 fi
 
+# Install python venv if not present
+if [ ! -f /workspace/.venv/bin/activate ]; then
+    apt-get install -y python3.12-venv -qq
+    python3 -m venv /workspace/.venv
+    /workspace/.venv/bin/pip install ansible-lint -q
+fi
+
+# Activate venv
+source /workspace/.venv/bin/activate
+
 # Fix SSH directory ownership
 chown -R root:root /root/.ssh
 chmod 700 /root/.ssh
