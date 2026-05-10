@@ -12,6 +12,15 @@ if [ ! -f /workspace/.venv/bin/activate ]; then
     /workspace/.venv/bin/pip install ansible-lint -q
 fi
 
+# Install python and venv if not present
+if [ ! -f /workspace/.venv/bin/ansible-lint ]; then
+    apt-get install -y python3 python3.12-venv -qq
+    python3 -m venv /workspace/.venv
+    /workspace/.venv/bin/pip install ansible-lint -q
+fi
+# Activate venv for root
+echo 'source /workspace/.venv/bin/activate' >> /root/.bashrc
+
 # Activate venv
 source /workspace/.venv/bin/activate
 
