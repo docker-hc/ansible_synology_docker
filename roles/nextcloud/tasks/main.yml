@@ -1,20 +1,19 @@
 ---
 - name: Ensure Nextcloud directories exist
-  file:
+  ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
     owner: "{{ nextcloud.puid }}"
     group: "{{ nextcloud.pgid }}"
-    mode: "{{item.mode}}"
+    mode: "{{ item.mode }}"
   loop:
     - { path: "{{ docker_data_path }}/nextcloud/config", mode: "0755" }
     - { path: "{{ docker_data_path }}/nextcloud/data", mode: "0770" }
-    
 
 - name: Deploy Nextcloud container
   community.docker.docker_container:
-    name: "{{ nextcloud.container_name | default('nextcloud') }}"
-    image: "{{ nextcloud.image | default('lscr.io/linuxserver/nextcloud:latest') }}"
+    name: "{{ nextcloud.container_name }}"
+    image: "{{ nextcloud.image }}"
     state: started
     restart_policy: unless-stopped
     pull: false
@@ -49,7 +48,7 @@
       networks: strict
 
 - name: Fix Nextcloud config symlink for new image structure
-  command: >
+  ansible.builtin.command: >
     /usr/local/bin/docker exec nextcloud bash -c
     'if [ ! -L /app/www/src/config/config.php ]; then
       rm -f /app/www/src/config/config.php &&
@@ -58,15 +57,16 @@
   changed_when: false
 
 - name: Fix Nextcloud config directory ownership
-  command: /usr/local/bin/docker exec nextcloud chown -R abc:abc /config/www/nextcloud/config
+  ansible.builtin.command: /usr/local/bin/docker exec nextcloud chown -R abc:abc /config/www/nextcloud/config
   changed_when: false
 
 - name: Set Nextcloud trusted domains
-  shell: >
+  ansible.builtin.shell: >
     /usr/local/bin/docker exec nextcloud sudo -u abc php /app/www/src/occ
     config:system:set trusted_domains {{ item.index }}
     --value='{{ item.domain }}'
   loop:
     - { index: 0, domain: "192.168.2.102:6001" }
     - { index: 1, domain: "*.dk-cyberworld.synology.me" }
+    - { index: 2, domain: "nextcloud.dk-cyberworld.synology.me" }
   changed_when: false

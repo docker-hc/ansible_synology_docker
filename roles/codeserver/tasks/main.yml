@@ -1,5 +1,5 @@
 - name: Ensure Code Server directories exist
-  file:
+  ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
     owner: "{{ item.owner }}"
@@ -12,21 +12,21 @@
     - { path: "{{ docker_data_path }}/codeserver/custom-cont-init.d", owner: "root", group: "root", mode: "0755" }
 
 - name: Ensure codeserver outgoing SSH key exists
-  command: >
-    dropbearkey -t ed25519 -f {{ docker_data_path }}/codeserver/.ssh/id_dropbear
+  ansible.builtin.command: >
+    dropbearkey -t ed25519
+    -f {{ docker_data_path }}/codeserver/.ssh/id_dropbear
   args:
     creates: "{{ docker_data_path }}/codeserver/.ssh/id_dropbear"
-  register: dropbear_key
 
 - name: Set correct permissions on outgoing SSH key
-  file:
+  ansible.builtin.file:
     path: "{{ docker_data_path }}/codeserver/.ssh/id_dropbear"
     mode: "0600"
     owner: root
-    group: root      
+    group: root
 
 - name: Copy SSH init script
-  copy:
+  ansible.builtin.copy:
     src: init-ssh.sh
     dest: "{{ docker_data_path }}/codeserver/custom-cont-init.d/01-ssh.sh"
     owner: root
@@ -34,7 +34,7 @@
     mode: "0755"
 
 - name: Ensure authorized_keys exists with correct key
-  copy:
+  ansible.builtin.copy:
     content: "{{ codeserver.ssh_public_key }}\n"
     dest: "{{ docker_data_path }}/codeserver/.ssh/authorized_keys"
     owner: root
@@ -42,7 +42,7 @@
     mode: "0600"
 
 - name: Ensure SSH host keys exist
-  command: >
+  ansible.builtin.command: >
     ssh-keygen -t {{ item.type }}
     -f {{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item.type }}_key
     -N ""
@@ -53,7 +53,7 @@
     - { type: ed25519 }
 
 - name: Set correct permissions on SSH host keys
-  file:
+  ansible.builtin.file:
     path: "{{ docker_data_path }}/codeserver/.ssh/ssh_host_{{ item }}_key"
     mode: "0600"
     owner: root
@@ -74,7 +74,7 @@
     networks:
       - name: "{{ docker_network_name }}"
     env:
-      PASSWORD: "{{ codeserver.password }}"  
+      PASSWORD: "{{ codeserver.password }}"
       PUID: "{{ codeserver.puid }}"
       PGID: "{{ codeserver.pgid }}"
       TZ: "{{ codeserver.timezone }}"

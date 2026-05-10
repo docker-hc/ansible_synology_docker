@@ -3,11 +3,8 @@
 docker_packages:
   - docker
   - docker-compose
-
 # Persistent data path for all Docker containers
 docker_data_path: /volume1/docker
-
 # Docker bridge network for container isolation
 docker_network_name: synology_net
 docker_network_subnet: 172.25.0.0/16
-

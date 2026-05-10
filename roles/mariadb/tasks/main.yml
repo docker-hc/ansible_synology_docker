@@ -1,10 +1,10 @@
 ---
 - name: Ensure MariaDB data directory exists
-  file:
+  ansible.builtin.file:
     path: "{{ docker_data_path }}/mariadb"
     state: directory
-    owner: "999"        # mysql user inside mariadb container
-    group: "999"
+    owner: "{{ mariadb.puid | default('999') }}"
+    group: "{{ mariadb.pgid | default('999') }}"
     mode: "0755"
 
 - name: Deploy MariaDB container

@@ -1,5 +1,6 @@
+---
 - name: Ensure Docker data path exists
-  file:
+  ansible.builtin.file:
     path: "{{ docker_data_path }}"
     state: directory
     owner: root
@@ -12,4 +13,3 @@
     driver: bridge
     ipam_config:
       - subnet: "{{ docker_network_subnet }}"
-

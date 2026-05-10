@@ -1,11 +1,10 @@
 ---
 - name: Synology Docker Stack Deployment
   hosts: synology
-  become: yes
+  become: true
   roles:
     - docker_base
     - mariadb
     - redis
     - nextcloud
     - codeserver
-

@@ -1,10 +1,10 @@
 ---
 - name: Ensure Redis data directory exists
-  file:
+  ansible.builtin.file:
     path: "{{ docker_data_path }}/redis"
     state: directory
-    owner: "999"        # redis user inside container
-    group: "999"
+    owner: "{{ redis.puid | default('999') }}"
+    group: "{{ redis.pgid | default('999') }}"
     mode: "0755"
 
 - name: Deploy Redis container
@@ -25,4 +25,3 @@
       volumes: strict
       env: strict
       networks: strict
-
