@@ -1,0 +1,30 @@
+---
+- name: Ensure Portainer data directory exists
+  ansible.builtin.file:
+    path: "{{ docker_data_path }}/portainer"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Portainer container
+  community.docker.docker_container:
+    name: "{{ portainer.container_name | default('portainer') }}"
+    image: "{{ portainer.image | default('portainer/portainer-ce:latest') }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: false
+    networks:
+      - name: "{{ docker_network_name }}"
+    volumes:
+      - "{{ docker_data_path }}/portainer:/data"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    ports:
+      - "{{ portainer.port_http | default('8000') }}:8000"
+      - "{{ portainer.port_ui | default('9000') }}:9000"
+    memory: "{{ portainer.memory | default('256m') }}"
+    memory_swap: "{{ portainer.memory_swap | default('512m') }}"
+    comparisons:
+      volumes: strict
+      env: strict
+      networks: strict

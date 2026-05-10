@@ -47,3 +47,12 @@ redis:
   image: "redis:7"
   memory: "256m"
   memory_swap: "512m"
+
+# Portainer
+portainer:
+  container_name: portainer
+  image: "portainer/portainer-ce:latest"
+  port_http: 8000
+  port_ui: 9000
+  memory: "256m"
+  memory_swap: "512m"    
